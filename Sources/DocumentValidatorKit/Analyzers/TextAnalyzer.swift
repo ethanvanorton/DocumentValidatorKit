@@ -10,6 +10,7 @@ enum TextAnalyzer {
         let lines: [String]
         let density: Double      // 0–1 normalized
         let joinedText: String   // uppercased, for keyword matching
+        let confidences: [Float] // per-line OCR confidence values
     }
 
     /// Runs OCR and returns recognized lines + density score.
@@ -30,11 +31,12 @@ enum TextAnalyzer {
             transform: { results in
                 let obs = results as? [VNRecognizedTextObservation] ?? []
                 let lines = obs.compactMap { $0.topCandidates(1).first?.string }
+                let confidences = obs.compactMap { $0.topCandidates(1).first?.confidence }
                 let density = min(Double(obs.count) / 40.0, 1.0)
                 let joined = lines.joined(separator: " ").uppercased()
-                return OCRResult(lines: lines, density: density, joinedText: joined)
+                return OCRResult(lines: lines, density: density, joinedText: joined, confidences: confidences)
             },
-            fallback: OCRResult(lines: [], density: 0, joinedText: "")
+            fallback: OCRResult(lines: [], density: 0, joinedText: "", confidences: [])
         )
     }
 }

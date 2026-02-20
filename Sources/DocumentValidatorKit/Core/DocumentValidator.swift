@@ -36,6 +36,13 @@ public final class DocumentValidator {
         let ocr = try await ocrResult
         let detectedBarcodes = await barcodes
 
+        // ── Legibility analysis (uses OCR confidences + sharpness) ──
+
+        let legibility = await LegibilityAnalyzer.analyze(
+            image: image,
+            ocrConfidences: ocr.confidences
+        )
+
         // ── Content matching ──────────────────────────────────
 
         let barcodeText = detectedBarcodes.map(\.rawString).joined(separator: " ")
@@ -54,6 +61,7 @@ public final class DocumentValidator {
             faceDetected: face,
             contentMatch: contentMatch,
             hasBarcodes: !detectedBarcodes.isEmpty,
+            legibilityScore: legibility.score,
             threshold: options.confidenceThreshold
         )
 
@@ -68,7 +76,10 @@ public final class DocumentValidator {
             patternMatch: contentMatch.patternMatch,
             matchedPatterns: contentMatch.matchedPatterns,
             ocrLines: ocr.lines,
-            barcodePayloads: detectedBarcodes
+            barcodePayloads: detectedBarcodes,
+            legibilityScore: legibility.score,
+            sharpnessScore: legibility.sharpnessScore,
+            ocrConfidence: legibility.ocrConfidence
         )
 
         return ValidationResult(
@@ -76,7 +87,8 @@ public final class DocumentValidator {
             confidence: scoring.confidence,
             reason: scoring.reason,
             expectedCategory: expected,
-            signals: signals
+            signals: signals,
+            qualityFeedback: legibility.feedback
         )
     }
 

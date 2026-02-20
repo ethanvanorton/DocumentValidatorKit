@@ -105,6 +105,7 @@ final class DocumentValidatorKitTests: XCTestCase {
             faceDetected: true,
             contentMatch: contentMatch,
             hasBarcodes: true,
+            legibilityScore: 0.9,
             threshold: 0.45
         )
 
@@ -127,6 +128,7 @@ final class DocumentValidatorKitTests: XCTestCase {
             faceDetected: false,
             contentMatch: contentMatch,
             hasBarcodes: false,
+            legibilityScore: 0.5,
             threshold: 0.45
         )
 
@@ -149,10 +151,60 @@ final class DocumentValidatorKitTests: XCTestCase {
             faceDetected: false,
             contentMatch: contentMatch,
             hasBarcodes: false,
+            legibilityScore: 0.8,
             threshold: 0.45
         )
 
         XCTAssertFalse(result.isValid)
+    }
+
+    // MARK: - Legibility Scoring Tests
+
+    func testBlurryDocumentRejection() {
+        let contentMatch = ContentMatcher.MatchResult(
+            keywordMatch: true,
+            matchedKeywordGroups: [["driver", "license"]],
+            patternMatch: true,
+            matchedPatterns: [#"\d{2}/\d{2}/\d{4}"#]
+        )
+
+        let result = ScoringEngine.score(
+            category: .driversLicense,
+            edgeScore: 0.7,
+            textDensity: 0.2,
+            faceDetected: true,
+            contentMatch: contentMatch,
+            hasBarcodes: false,
+            legibilityScore: 0.1,
+            threshold: 0.45
+        )
+
+        // Even with good keywords, a very blurry image should be capped
+        XCTAssertFalse(result.isValid)
+        XCTAssertLessThanOrEqual(result.confidence, 0.2)
+    }
+
+    func testMarginalQualityDocument() {
+        let contentMatch = ContentMatcher.MatchResult(
+            keywordMatch: true,
+            matchedKeywordGroups: [["driver", "license"]],
+            patternMatch: true,
+            matchedPatterns: [#"\d{2}/\d{2}/\d{4}"#]
+        )
+
+        let result = ScoringEngine.score(
+            category: .driversLicense,
+            edgeScore: 0.7,
+            textDensity: 0.3,
+            faceDetected: true,
+            contentMatch: contentMatch,
+            hasBarcodes: false,
+            legibilityScore: 0.35,
+            threshold: 0.45
+        )
+
+        // Marginal quality with good content signals — should still pass but with lower confidence
+        XCTAssertTrue(result.isValid)
     }
 
     // MARK: - ValidationOptions Tests

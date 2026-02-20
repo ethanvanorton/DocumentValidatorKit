@@ -9,12 +9,13 @@ enum ScoringEngine {
     /// Keyword match is the strongest signal — if the text says "PASSPORT" and
     /// you expected a passport, that's the best indicator.
     private enum Weight {
-        static let keywordMatch: Double     = 0.35
-        static let patternMatch: Double     = 0.20
-        static let documentEdges: Double    = 0.15
-        static let textDensity: Double      = 0.15
-        static let faceExpectation: Double  = 0.10
+        static let keywordMatch: Double     = 0.30
+        static let patternMatch: Double     = 0.18
+        static let documentEdges: Double    = 0.13
+        static let textDensity: Double      = 0.12
+        static let faceExpectation: Double  = 0.09
         static let barcodePresence: Double  = 0.05
+        static let legibility: Double       = 0.13
     }
 
     struct ScoringResult: Sendable {
@@ -30,6 +31,7 @@ enum ScoringEngine {
         faceDetected: Bool,
         contentMatch: ContentMatcher.MatchResult,
         hasBarcodes: Bool,
+        legibilityScore: Double,
         threshold: Double
     ) -> ScoringResult {
 
@@ -99,9 +101,28 @@ enum ScoringEngine {
             reasons.append("Barcode detected")
         }
 
+        // ── 7. Legibility ──────────────────────────────────────
+
+        if legibilityScore >= 0.5 {
+            confidence += Weight.legibility * legibilityScore
+            reasons.append("Image is clear and readable")
+        } else if legibilityScore >= 0.3 {
+            confidence += Weight.legibility * 0.3
+            penalties.append("Image quality is marginal")
+        } else {
+            penalties.append("Image is too blurry or illegible")
+        }
+
         // ── Clamp to 0–1 ────────────────────────────────────
 
         confidence = min(max(confidence, 0), 1.0)
+
+        // ── Hard rejection: illegible image ──────────────────
+
+        if legibilityScore < 0.2 {
+            confidence = min(confidence, 0.2)
+            penalties.append("Image quality is too poor to validate")
+        }
 
         // ── Hard rejection: no text + no edges = not a document ──
 

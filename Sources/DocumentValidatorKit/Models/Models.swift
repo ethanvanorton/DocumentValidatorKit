@@ -312,18 +312,24 @@ public struct ValidationResult: Sendable {
     /// Detailed signal breakdown (useful for debugging and tuning).
     public let signals: ValidationSignals
 
+    /// Image quality feedback — nil if quality is acceptable.
+    /// Contains actionable messages like "Image is too blurry — please retake".
+    public let qualityFeedback: String?
+
     public init(
         isValid: Bool,
         confidence: Double,
         reason: String,
         expectedCategory: DocumentCategory,
-        signals: ValidationSignals
+        signals: ValidationSignals,
+        qualityFeedback: String? = nil
     ) {
         self.isValid = isValid
         self.confidence = confidence
         self.reason = reason
         self.expectedCategory = expectedCategory
         self.signals = signals
+        self.qualityFeedback = qualityFeedback
     }
 }
 
@@ -358,6 +364,15 @@ public struct ValidationSignals: Sendable {
     /// Detected barcode payloads, if any.
     public let barcodePayloads: [BarcodePayload]
 
+    /// 0–1 overall legibility score (sharpness + OCR confidence).
+    public let legibilityScore: Double
+
+    /// 0–1 image sharpness from Laplacian variance analysis.
+    public let sharpnessScore: Double
+
+    /// 0–1 average OCR confidence across recognized text.
+    public let ocrConfidence: Double
+
     public init(
         documentEdgeScore: Double,
         textDensityScore: Double,
@@ -367,7 +382,10 @@ public struct ValidationSignals: Sendable {
         patternMatch: Bool,
         matchedPatterns: [String],
         ocrLines: [String],
-        barcodePayloads: [BarcodePayload]
+        barcodePayloads: [BarcodePayload],
+        legibilityScore: Double = 1.0,
+        sharpnessScore: Double = 1.0,
+        ocrConfidence: Double = 1.0
     ) {
         self.documentEdgeScore = documentEdgeScore
         self.textDensityScore = textDensityScore
@@ -378,6 +396,9 @@ public struct ValidationSignals: Sendable {
         self.matchedPatterns = matchedPatterns
         self.ocrLines = ocrLines
         self.barcodePayloads = barcodePayloads
+        self.legibilityScore = legibilityScore
+        self.sharpnessScore = sharpnessScore
+        self.ocrConfidence = ocrConfidence
     }
 }
 
